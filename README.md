@@ -1,8 +1,10 @@
 # Anrufliste
 
 Recherchiert Firmen für Kaltakquise am Telefon und baut daraus eine Excel-Anrufliste:
-Prio, Stufe A/B/C, Entscheider mit Durchwahl, Mitarbeiterzahl mit Quellen, Kaufsignal
-(z. B. offene Stellen), Statusspalte zum Abhaken.
+Prio, Verbund/Gruppe, Stufe A/B/C, Entscheider mit Durchwahl, Mitarbeiterzahl mit Quellen,
+Erreichbarkeit, Kaufsignal (z. B. offene Stellen), „Anbieter schon da?“, Eignung,
+4 bis 6 branchenpassende Spalten, Gesprächshinweis und Statusspalte zum Abhaken.
+Dazu die Blätter Mitarbeiter-Quellen, Gesprächsleitfaden (passend zu eurem Angebot) und Legende.
 
 ## Benutzen (Claude Code im Browser)
 1. Auf claude.ai/code eine neue Sitzung mit diesem Repo starten.

@@ -47,12 +47,13 @@ HEAD = PatternFill("solid", fgColor="1F4E78")
 STUFE_FILL = {"A": PatternFill("solid", fgColor="C6EFCE"), "B": PatternFill("solid", fgColor="FFEB9C"), "C": PatternFill("solid", fgColor="F2F2F2")}
 GRUEN = STUFE_FILL["A"]
 ORANGE = PatternFill("solid", fgColor="F8CBAD")
+ROT = PatternFill("solid", fgColor="FFC7CE")
 WRAP = Alignment(wrap_text=True, vertical="top")
 LINK = Font(color="0563C1", underline="single")
 
 FELDER = ("firma", "ort", "kreis", "bundesland", "ansprechpartner", "rolle", "tel_ansprechpartner", "tel_zentrale", "email",
           "website", "mitarbeiter", "mitarbeiter_sicher", "widerspruch", "erreichbarkeit", "kaufsignal", "signal_staerke",
-          "eignung", "notiz")
+          "eignung", "notiz", "verbund", "konkurrenz")
 
 
 def sauber(v):
@@ -205,6 +206,8 @@ def laden(ordner, auftrag):
             quellen = als_liste(r.get("quellen") or r.get("mitarbeiter_quellen"))
             r = {k: leer(r.get(k)) for k in FELDER}
             r["extra"], r["quellen"] = extra, quellen
+            if r["konkurrenz"] == STRICH:
+                r["konkurrenz"] = "k. A."
             if r["firma"] == STRICH:
                 continue
             k = domain(r["website"]) or re.sub(r"\W", "", r["firma"].lower())
@@ -248,14 +251,16 @@ def excel(ordner):
         breite = e[2] if len(e) > 2 and isinstance(e[2], (int, float)) else 18
         extra.append((key, lbl, breite))
     signal_name = auftrag.get("signal_name", "Kaufsignal")
+    verbund_name = auftrag.get("verbund_name", "Verbund/Gruppe")
+    konk_name = auftrag.get("konkurrenz_name", "Anbieter schon da?")
     rows = laden(ordner, auftrag)
 
     wb = Workbook()
     ws = wb.active
     ws.title = "Anrufliste"
-    cols = [("Prio", 6), ("Stufe", 7), ("Firma", 34), ("Ort", 18), ("Ansprechpartner", 24), ("Rolle", 24), ("Telefon Ansprechpartner", 22),
-            ("Telefon Zentrale", 18), ("E-Mail", 26), ("Website", 28), ("Mitarbeiter", 14), ("Mitarbeiter sicher?", 11),
-            ("Eignung", 30), (signal_name, 40), ("Signal", 9), ("Erreichbarkeit", 40)]
+    cols = [("Prio", 6), (verbund_name, 16), ("Stufe", 7), ("Firma", 34), ("Ort", 18), ("Ansprechpartner", 24), ("Rolle", 26),
+            ("Telefon Ansprechpartner", 22), ("Telefon Zentrale", 18), ("E-Mail", 24), ("Website", 28), ("Mitarbeiter", 14),
+            ("Mitarbeiter sicher?", 11), ("Erreichbarkeit", 40), (signal_name, 40), ("Signal", 9), (konk_name, 22), ("Eignung", 28)]
     feste = {n for n, _ in cols} | {"Gesprächshinweis", "Angerufen am", "Status", "Ergebnis / Notiz"}
     cols += [(lbl if lbl not in feste else f"{lbl} (Zusatz)", w) for _, lbl, w in extra]
     cols += [("Gesprächshinweis", 38), ("Angerufen am", 13), ("Status", 18), ("Ergebnis / Notiz", 35)]
@@ -263,9 +268,9 @@ def excel(ordner):
     sp = {name: j for j, (name, _) in enumerate(cols, 1)}
     for i, r in enumerate(rows, 2):
         ort = r["ort"] if r["bundesland"] == STRICH else f"{r['ort']} ({r['bundesland']})"
-        vals = [r["prio"], r["stufe"], r["firma"], ort, r["ansprechpartner"], r["rolle"], r["tel_ansprechpartner"], r["tel_zentrale"],
-                r["email"], r["website"], r["mitarbeiter"], r["mitarbeiter_sicher"], r["eignung"], r["kaufsignal"], r["signal_staerke"],
-                r["erreichbarkeit"]]
+        vals = [r["prio"], r["verbund"], r["stufe"], r["firma"], ort, r["ansprechpartner"], r["rolle"], r["tel_ansprechpartner"],
+                r["tel_zentrale"], r["email"], r["website"], r["mitarbeiter"], r["mitarbeiter_sicher"], r["erreichbarkeit"],
+                r["kaufsignal"], r["signal_staerke"], r["konkurrenz"], r["eignung"]]
         vals += [leer(r["extra"].get(k)) for k, _, _ in extra]
         vals += [r["notiz"], None, None, None]
         for j, v in enumerate(vals, 1):
@@ -276,8 +281,11 @@ def excel(ordner):
         if wort(r["signal_staerke"]) == "hoch":
             ws.cell(i, sp[signal_name]).fill = GRUEN
             ws.cell(i, sp["Signal"]).fill = GRUEN
+        if r["konkurrenz"].lower().startswith("ja"):
+            ws.cell(i, sp[konk_name]).fill = ROT
         if eingeschraenkt(r["erreichbarkeit"]):
             ws.cell(i, sp["Firma"]).fill = ORANGE
+            ws.cell(i, sp["Firma"]).font = Font(bold=True)
             ws.cell(i, sp["Erreichbarkeit"]).fill = ORANGE
         if domain(r["website"]):
             url = r["website"].split(" ")[0]
@@ -290,15 +298,32 @@ def excel(ordner):
     dv = DataValidation(type="list", formula1='"' + ",".join(STATUS) + '"', allow_blank=True)
     ws.add_data_validation(dv)
     dv.add(f"{sc}2:{sc}{max(len(rows), 1) + 1}")
-    ws.freeze_panes = "D2"
+    ws.freeze_panes = "E2"
     ws.auto_filter.ref = f"A1:{ws.cell(1, len(cols)).column_letter}{len(rows) + 1}"
 
-    q = wb.create_sheet("Quellen")
+    q = wb.create_sheet("Mitarbeiter-Quellen")
     kopf(q, [("Firma", 34), ("Mitarbeiter", 14), ("sicher?", 9), ("Quellen", 90), ("Widerspruch / Hinweis", 60)])
     for i, r in enumerate(sorted(rows, key=lambda r: r["firma"].lower()), 2):
         for j, v in enumerate([r["firma"], r["mitarbeiter"], r["mitarbeiter_sicher"], "\n".join(map(str, r["quellen"])) or STRICH, r["widerspruch"]], 1):
             q.cell(i, j, v).alignment = WRAP
     q.freeze_panes = "B2"
+
+    leitfaden = auftrag.get("leitfaden") or []
+    if leitfaden:
+        g = wb.create_sheet("Gesprächsleitfaden")
+        g.column_dimensions["A"].width = 24
+        g.column_dimensions["B"].width = 110
+        g.cell(1, 1, f"{titel}: Gesprächsleitfaden (Stand {datum_de})").font = Font(bold=True)
+        zeile = 3
+        for block in leitfaden:
+            if not isinstance(block, (list, tuple)) or len(block) < 2:
+                continue
+            g.cell(zeile, 1, leer(block[0])).font = Font(bold=True)
+            eintraege = block[1] if isinstance(block[1], list) else [block[1]]
+            for e in eintraege:
+                g.cell(zeile, 2, leer(e)).alignment = WRAP
+                zeile += 1
+            zeile += 1
 
     lg = wb.create_sheet("Legende")
     lg.column_dimensions["A"].width = 22
@@ -315,9 +340,12 @@ def excel(ordner):
         (None, None),
         ("Eignung", "Wie gut die Firma zum Zielprofil passt (hoch grün), mit kurzer Begründung."),
         (signal_name, auftrag.get("signal_definition", "Konkreter Anlass, gerade jetzt anzurufen.") + " Spalte Signal: hoch (grün) / mittel / niedrig / – (nichts gefunden)."),
+        (verbund_name, "Einkaufsverbund, Kooperation, Franchise oder Unternehmensgruppe, zu der die Firma gehört (– = keine gefunden)."),
+        (konk_name, auftrag.get("konkurrenz_definition", "Nutzt die Firma schon einen Anbieter für das, was wir verkaufen?") + " ja = belegt (rot, Anbieter steht dabei), nein = Gegenteil belegt, k. A. = nichts gefunden."),
         ("Orange", "Firma schreibt, dass sie telefonisch eingeschränkt erreichbar ist (Telefonzeiten, Mittagspause, Freitag früh zu …). Zeiten stehen in der Spalte Erreichbarkeit."),
-        ("Mitarbeiter", "Bestschätzung aus Website, Stellenanzeigen, LinkedIn, Presse, Registerauszügen. Alle Quellen im Blatt Quellen."),
+        ("Mitarbeiter", "Bestschätzung aus Website, Stellenanzeigen, LinkedIn, Presse, Registerauszügen. Alle Quellen im Blatt Mitarbeiter-Quellen."),
         ("Mitarbeiter sicher?", "hoch = eigene Angabe der Firma oder mehrere Quellen stimmen überein; mittel = eine plausible Quelle; niedrig = geschätzt oder widersprüchlich"),
+        ("Gesprächshinweis", "Was beim Anruf hilft: Aufhänger, offene Stellen, neue Standorte, Besonderheiten."),
         ("Status", "Nach jedem Anruf auswählen: Termin; Rückruf vereinbart (Zeit in Notiz); Chef nicht erreicht (Durchwahl/andere Uhrzeit versuchen); kein Bedarf (6 Mon.) = später nochmal; gesperrt = nie wieder anrufen."),
         ("Strich", "– = Angabe nicht auffindbar"),
         ("Dubletten", "Firmen aus früheren Listen in ~/Anruflisten (und aus ~/Anruflisten/alt) sind herausgefiltert."),

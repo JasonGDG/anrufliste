@@ -12,13 +12,16 @@ Du orchestrierst. Die Recherche machen 3 bis 4 parallele Unteragenten, das Excel
 
 ## 1. Auftrag klären
 Aus der Anfrage ablesen, nur Fehlendes kurz nachfragen (eine Nachricht, höchstens 3 Fragen):
-- **Angebot:** Was verkauft der Nutzer? (Steht es in einer früheren `~/Anruflisten/*/auftrag.json`, nicht neu fragen, sondern übernehmen.)
+- **Angebot:** Was verkauft der Nutzer? (Steht es in einer früheren `Anruflisten/*/auftrag.json`, nicht neu fragen, sondern übernehmen.)
 - **Zielkunden:** Branche, Größe (Mitarbeiter), Art der Firma.
 - **Region** und **Anzahl** (Standard 40).
 
 Dann selbst festlegen (nicht fragen, in der Antwort kurz nennen):
 - **Kaufsignal**: woran man erkennt, dass die Firma *jetzt* Bedarf hat, abgeleitet aus dem Angebot. Personaldienstleister → offene Stellen (welche, wie viele, seit wann); Software → Stellenanzeigen für die Aufgabe, Wachstum; Handwerk/Bau → neue Standorte, Bauprojekte. Name der Spalte (`signal_name`), z. B. „Offene Stellen“.
-- **Zusatzspalten** (0 bis 4), die für dieses Angebot beim Anruf helfen, z. B. Standorte, Branche genau, Schichtbetrieb, Tarifbindung.
+- **Verbund/Gruppe** (`verbund_name`, `verbund_definition`): wozu die Firmen in dieser Branche typischerweise gehören. Baustoffhandel → „Verbund“ (Eurobaustoff, hagebau …); Autohäuser → „Marke/Gruppe“; Pflege → „Träger“. Sonst „Gruppe“.
+- **Anbieter schon da?** (`konkurrenz_name`, `konkurrenz_definition`): Hat die Firma schon, was der Nutzer verkauft? Personaldienstleister → „Zeitarbeit im Einsatz?“ (Belege: Stellen der Firma bei Zeitarbeitsfirmen ausgeschrieben, „über unseren Partner XY“); Telefon-KI → „Voicebot“ (Anbieter in Datenschutzerklärung). Rot markiert in der Liste.
+- **Zusatzspalten** (4 bis 6), die für Branche und Angebot beim Anruf helfen, wie in einer guten Vertriebsliste. Beispiel Baustoffhandel: Standorte, Sortiment, Baumarkt ja/nein, Onlineshop, Fuhrpark. Beispiel Logistik für Personaldienstleister: Standorte, Leistungen (Lager/Transport/Kontrakt), Schichtbetrieb, Lagerfläche, Fuhrpark, Saisonspitzen.
+- **Gesprächsleitfaden** (`leitfaden`) für genau dieses Angebot und diese Zielgruppe: 5 bis 6 Blöcke mit je 2 bis 4 kurzen Sätzen: Ziel des Anrufs, Wen ansprechen (Rolle, beste Uhrzeit), Einstieg (mit Bezug auf Kaufsignal/Gesprächshinweis), Bedarf erfragen (2 bis 3 Fragen), Einwände (die 3 häufigsten mit Antwort), Abschluss (konkreter nächster Schritt). Kein Fülltext.
 - **Teilgebiete**: Region in 3 bis 4 etwa gleich ergiebige Teile schneiden (nach Landkreisen/Städten), Anzahl gleichmäßig verteilen.
 
 ## 2. Ordner anlegen
@@ -29,7 +32,11 @@ Gibt den Ordner aus. Darin `auftrag.json` schreiben:
 ```json
 {"titel": "Logistik Westfalen", "datum": "JJJJ-MM-TT", "angebot": "…", "zielprofil": "…", "region": "…",
  "min_mitarbeiter": 20, "signal_name": "Offene Stellen", "signal_definition": "…",
- "extra_spalten": [["standorte", "Standorte", 20], ["branche", "Branche", 18]],
+ "verbund_name": "Gruppe", "verbund_definition": "…",
+ "konkurrenz_name": "Zeitarbeit im Einsatz?", "konkurrenz_definition": "…",
+ "extra_spalten": [["standorte", "Standorte", 20], ["leistungen", "Leistungen", 22], ["schicht", "Schichtbetrieb", 12]],
+ "leitfaden": [["Ziel des Anrufs", ["…", "…"]], ["Wen ansprechen", ["…"]], ["Einstieg", ["…"]],
+               ["Bedarf erfragen", ["…"]], ["Einwände", ["„Wir haben schon einen Dienstleister.“ → …"]], ["Abschluss", ["…"]]],
  "teilgebiete": ["…", "…", "…"]}
 ```
 (`min_mitarbeiter` weglassen, wenn es keine Untergrenze gibt.) Dann:
@@ -38,7 +45,7 @@ python3 <skill-ordner>/build.py ausschluss <ordner>
 ```
 
 ## 3. Recherche parallel starten
-`recherche-auftrag.md` lesen und je Teilgebiet einen Unteragenten starten, **alle in einer Nachricht**, `subagent_type: "general-purpose"`, `model: "sonnet"`, im Hintergrund. Prompt = der komplette Text von `recherche-auftrag.md` mit ersetzten Platzhaltern ({ANGEBOT}, {ZIELPROFIL}, {TEILGEBIET}, {ANZAHL}, {MINIMUM} ≈ 80 %, {SIGNAL_NAME}, {SIGNAL_DEFINITION}, {EXTRA_FELDER} = Schlüssel mit Bedeutung, {ORDNER}, {DATEI} = `teil1`, `teil2` …, {AUSSCHLUSS_EXTRA} = Wünsche des Nutzers, sonst leer).
+`recherche-auftrag.md` lesen und je Teilgebiet einen Unteragenten starten, **alle in einer Nachricht**, `subagent_type: "general-purpose"`, `model: "sonnet"`, im Hintergrund. Prompt = der komplette Text von `recherche-auftrag.md` mit ersetzten Platzhaltern ({ANGEBOT}, {ZIELPROFIL}, {TEILGEBIET}, {ANZAHL}, {MINIMUM} ≈ 80 %, {SIGNAL_NAME}, {SIGNAL_DEFINITION}, {VERBUND_NAME}, {VERBUND_DEFINITION}, {KONKURRENZ_NAME}, {KONKURRENZ_DEFINITION}, {EXTRA_FELDER} = Schlüssel mit Bedeutung, {ORDNER}, {DATEI} = `teil1`, `teil2` …, {AUSSCHLUSS_EXTRA} = Wünsche des Nutzers, sonst leer).
 Dem Nutzer in einem Satz sagen, was läuft und wie lange es etwa dauert (10 bis 25 Minuten).
 
 ## 4. Prüfen und bauen
