@@ -5,10 +5,7 @@ description: Recherchiert Firmen für Kaltakquise am Telefon und baut daraus ein
 
 # Anrufliste
 
-Du orchestrierst. Die Recherche machen 3 bis 4 parallele Unteragenten, das Excel baut `build.py` (liegt neben dieser Datei). Alle Listen landen in einem Ordner `Anruflisten/`, damit keine Firma zweimal geliefert wird:
-- **Skill liegt in einem Repo** (`<repo>/.claude/skills/anrufliste`, z. B. Claude Code im Browser): `<repo>/Anruflisten/`. `build.py` liest dann auch die Listen auf allen anderen Branches mit.
-- **Skill liegt lokal** (`~/.claude/skills/anrufliste`): `~/Anruflisten/`.
-`build.py neu` gibt den richtigen Ordner aus, du musst das nicht selbst entscheiden.
+Du orchestrierst. Die Recherche machen 3 bis 4 parallele Unteragenten, das Excel baut `build.py` (liegt neben dieser Datei). Alle Listen landen im Repo unter `Anruflisten/`, damit keine Firma zweimal geliefert wird. `build.py` liest dabei auch die Listen auf allen anderen Branches mit. `<skill-ordner>` ist `.claude/skills/anrufliste`.
 
 ## 1. Auftrag klären
 Aus der Anfrage ablesen, nur Fehlendes kurz nachfragen (eine Nachricht, höchstens 3 Fragen):
@@ -26,17 +23,17 @@ Dann selbst festlegen (nicht fragen, in der Antwort kurz nennen):
 
 ## 2. Ordner anlegen
 ```
-python3 <skill-ordner>/build.py neu "<kurzer Titel, z. B. Logistik Westfalen>"
+python3 <skill-ordner>/build.py neu "<kurzer Titel, z. B. Branche Region>"
 ```
 Gibt den Ordner aus. Darin `auftrag.json` schreiben:
 ```json
-{"titel": "Logistik Westfalen", "datum": "JJJJ-MM-TT", "angebot": "…", "zielprofil": "…", "region": "…",
- "min_mitarbeiter": 20, "signal_name": "Offene Stellen", "signal_definition": "…",
- "verbund_name": "Gruppe", "verbund_definition": "…",
- "konkurrenz_name": "Zeitarbeit im Einsatz?", "konkurrenz_definition": "…",
- "extra_spalten": [["standorte", "Standorte", 20], ["leistungen", "Leistungen", 22], ["schicht", "Schichtbetrieb", 12]],
+{"titel": "…", "datum": "JJJJ-MM-TT", "angebot": "…", "zielprofil": "…", "region": "…",
+ "min_mitarbeiter": 20, "signal_name": "…", "signal_definition": "…",
+ "verbund_name": "…", "verbund_definition": "…",
+ "konkurrenz_name": "…", "konkurrenz_definition": "…",
+ "extra_spalten": [["standorte", "Standorte", 20], ["schluessel", "Spaltenname", 18]],
  "leitfaden": [["Ziel des Anrufs", ["…", "…"]], ["Wen ansprechen", ["…"]], ["Einstieg", ["…"]],
-               ["Bedarf erfragen", ["…"]], ["Einwände", ["„Wir haben schon einen Dienstleister.“ → …"]], ["Abschluss", ["…"]]],
+               ["Bedarf erfragen", ["…"]], ["Einwände", ["„Einwand“ → Antwort"]], ["Abschluss", ["…"]]],
  "teilgebiete": ["…", "…", "…"]}
 ```
 (`min_mitarbeiter` weglassen, wenn es keine Untergrenze gibt.) Dann:
@@ -54,12 +51,12 @@ Wenn alle Agenten fertig sind:
 - `python3 <skill-ordner>/build.py excel <ordner>` ausführen. Meldungen „Dublette“ / „schon früher geliefert“ sind normal.
 - Ein Teilgebiet deutlich unter Soll? Einmal nachlegen lassen (SendMessage an denselben Agenten), sonst ehrlich melden.
 
-## 5. Im Repo: speichern und hochladen
-Liegt der Ordner in einem Git-Repo (Browser-Sitzung), den kompletten Auftragsordner (auftrag.json, data/, Excel) committen und pushen, auf den Branch dieser Sitzung („Anrufliste <Titel>“). Nur so kann der Nutzer die Datei herunterladen, und nur so kennt die nächste Liste diese Firmen. Den GitHub-Link zur Excel-Datei ermitteln (`git remote get-url origin` + Branch + Pfad, Form `https://github.com/<owner>/<repo>/blob/<branch>/<pfad>`) und in der Antwort nennen. Hinweis an den Nutzer: dort oben rechts auf „Download raw file“ klicken.
+## 5. Speichern und hochladen
+Den kompletten Auftragsordner (auftrag.json, data/, Excel) committen und pushen, auf den Branch dieser Sitzung („Anrufliste <Titel>“). Nur so kann der Nutzer die Datei herunterladen, und nur so kennt die nächste Liste diese Firmen. Den GitHub-Link zur Excel-Datei ermitteln (`git remote get-url origin` + Branch + Pfad, Form `https://github.com/<owner>/<repo>/blob/<branch>/<pfad>`) und in der Antwort nennen. Hinweis an den Nutzer: dort oben rechts auf „Download raw file“ klicken.
 
 ## 6. Antwort an den Nutzer
 Kurz und einfach, ohne Fachjargon:
-- Lokal: Pfad der Excel-Datei (vollständig) und `open <pfad>` ausführen. Im Browser: der GitHub-Link aus Schritt 5.
+- Der GitHub-Link zur Excel-Datei aus Schritt 5.
 - Anzahl Firmen, Verteilung auf die Teilgebiete, Stufe A/B/C, wie viele mit starkem Kaufsignal.
 - Die 3 bis 5 besten Firmen zum Starten (Prio 1 bis 5) mit je einem Halbsatz warum.
 - Auffälligkeiten (Übernahmen, Grenzfälle, Gebiet ausgeschöpft) als kurze Stichpunkte.
@@ -67,4 +64,4 @@ Kurz und einfach, ohne Fachjargon:
 ## Regeln
 - Nichts erfinden. Nummern, Namen, Stellen nur mit Quelle.
 - Niemanden kontaktieren, keine Formulare absenden.
-- Alte Listen, die nicht von diesem Skill stammen, kann der Nutzer als .xlsx (mit Spalte „Website“) oder .txt (eine Domain pro Zeile) in `Anruflisten/alt/` legen (im Repo: auf den Hauptbranch hochladen); sie werden dann ausgeschlossen.
+- Alte Listen, die nicht von diesem Skill stammen, kann der Nutzer als .xlsx (mit Spalte „Website“) oder .txt (eine Domain pro Zeile) auf dem Hauptbranch in `Anruflisten/alt/` hochladen; sie werden dann ausgeschlossen.
